@@ -9,10 +9,6 @@ library(foreach)
 library(detectseparation)
 
 
-#set up to work with Python----------------------------------------------------------------------------
-#setwd("C:/Users/lshmt4/Desktop/plos-one-main/simulation")
-#
-use_python("C:/Users/Mia/miniconda3")
 
 #load useful information for simulation ------------------------------------------------------------------
 
