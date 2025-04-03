@@ -1,132 +1,47 @@
-library(reticulate)
+#Load packages------------------------------------------------------------------
+
+#library(reticulate)
 library(tidyverse)
 library(matrixStats)
-library(gridExtra)
+#library(gridExtra)
 library(grid)
-library(ggpubr)
+#library(ggpubr)
 library(mice)
 library(foreach)
-library(detectseparation)
+library(gittins)
+library(doParallel)
+#library(detectseparation)
 
+#load settings for simulation study --------------------------------------------
+Method= c("FR","permuted_block", "neyman", "RTS", "GI", "RGI", "RGI_nt", "CB", "RBI", "RBI_nt")
 
+beta_names <- c("Null", "Null-low", 
+                "Alternative", "Alternative-low")
 
-#load useful information for simulation ------------------------------------------------------------------
+true_success <- data.frame(beta=beta_names, 
+                           p0=c(0.2788848, 0.07242649, 0.2141650, 0.07242649), 
+                           p1=c(0.2788848, 0.07242649, 0.2809003, 0.11405238))
 
-Method= c("FR", "RTS", "CB", "UCB", "RGI", "GI", "RBI")
-
-beta_names <- c("Null", "Null_low", "Null_high",
-                "Alternative", "Alternative_low","Alternative_high",
-                "Coveffect", "Synergistic","Antagonistic")
 
 #beta parameters for model for the response
-beta_list <- list("Null" =c(0, 0, 0, 0), #null case - pk=0.5
-                  "Null_low" =c(-1.5, 0, 0, 0), #null case - pk=0.182
-                  "Null_high" =c(1.5, 0, 0, 0), #null case - pk=0.818
-                  "Alternative"= c(0, 0, 2, 0), # alternative, no effect of covariate
-                  "Alternative_low" = c(0, 0, 0.7, 0),  
-                  "Alternative_low2" = c(0, 0, 0.3, 0),  
-                  "Alternative_high" = c(-1, 0, 2, 0),  #more contrast between arms 
-                  "Coveffect" = c(0, -2, 2, 0),      #alternative, effect of covariate 
-                  "Synergistic" = c(0, 1, 1, 0),  # covariate makes choice for arm 1 harder 
-                  "Antagonistic"= c(0, -1, 1, -2)) # choice of best arm is different 
+beta_list <- list("Null" =c(-0.95, 0, 0, 0), #succcess probability of 28% in each arm 
+                  "Null-low" =c(-2.55, 0, 0, 0),#succcess probability of 7% in each arm 
+                  "Alternative"=c(-1.3, 0, 0.36, 0), # 21% in placebo arm while 28% in the treatment arm 
+                  "Alternative-low" = c(-2.55, 0, 0.5, 0)) #success probability 7% in placebo arm and 11% in the treatment arm  
 
 
+alpha_names <- c("Fully Observed", "MCAR",
+                 "MAR-T1-low", "MAR-T0-high",
+                 "MNAR-Y0", "MNAR-T0Y0")
 
-alpha_names <- c("Complete", "MCAR",
-                 "MAR_X1", "MAR_X0",
-                 "MAR_T1_high", "MAR_T1_low", "MAR_T0_high",
-                 "MNAR_Y0", "MNAR_Y1", "MNAR_T1Y0", "MNAR_T1Y1", 
-                 "MNAR_T0Y0", "MNAR_T0Y1", 
-                 "MNAR_X1Y1","MNAR_X0Y0")
 
-#alpha parameters for the model for missingness mechanism------------------------
-alpha_list <- list("Complete"= "FALSE",                     
-                   "MCAR" = c(-1, 0, 0, 0), 
-                   "MAR_X1" =  c(-5, 5, 0, 0), 
-                   "MAR_X0" =  c(0, -5, 0, 0),
-                   "MAR_T1_high"=c(-5, 0, 5, 0),
-                   "MAR_T1_low"=c(-5, 0, 3, 0),
-                   "MAR_T0_high"=c(0, 0, -5, 0),
-                   "MNAR_Y0" = c(0, 0, 0, -5), 
-                   "MNAR_Y1" = c(-5, 0, 0, 5), 
-                   "MNAR_T1Y0" =  c(-0.5, 0, 0.5, -4), 
-                   "MNAR_T1Y1" =  c(-4.5, 0, 0.5, 4),
-                   "MNAR_T0Y0" =  c(0, 0, -0.5, -4), 
-                   "MNAR_T0Y1" =  c(-4, 0, -0.5, 4))
+#alpha parameters for the model for missingness mechanism
+alpha_list <- list("Fully Observed"= "FALSE",                     
+                   "MCAR" = c(-1.8, 0, 0, 0),
+                   "MAR-T0-low"=c(-1.8, 0, -0.3, 0),
+                   "MAR-T0-high"=c(0, 0, -4, 0),
+                   "MNAR-Y0" =c(-1.5, 0, 0, -1.5), 
+                   "MNAR-T0Y0" = c(-1.5, 0, -0.5, -1.5))
 
 missing_names <- c("cc", "single_impute_current", 
-                   "single_impute", "MI",  "impute_zero")
-#load common functions ---------------------------------------------------------------
-
-
-prob_success <- function(beta, x, t){ 
-  #given parameters of the data-generating mechanism, 
-  #and a value for the covariate (x) and treatment arm (k), output probabilty 
-  #of success. Allows for treatment-covariate interactions 
-  prob <- 1/(1 + exp(-(beta[1]+ beta[2]*x+beta[3]*t+beta[4]*x*t)))   
-  
-  return(prob)
-}
-
-
-prob_missing<- function(alpha, beta, x, t){
-  
-  y <- ifelse(prob_success(beta, x, t) >= 0.5, 1, 0)
-  
-  
-  prob <- 1/(1+exp(-(alpha[1]+alpha[2]*x +alpha[3]*t+ alpha[4]*y)))
-  
-  return(prob)
-  
-}
-#load common functions for the simullation study 
-
-
-
-prob_missing_linear <- function(alpha, beta, x, t){
-  #given the parameters of the model for the response (beta)
-  # and the parameters of the model for missingness (alpha), 
-  # return probability of successful outcome given x (covariate) and t (treatment)
-  
-  prob <- 1/(1+exp(-((alpha[1]+alpha[4]*beta[1])+(alpha[2]+alpha[4]*beta[2])*x +
-                       (alpha[3]+alpha[4]*beta[3])*t  + alpha[4]*beta[4]*t*x)))
-  
-  return(prob)
-  
-}
-
-
-
-setting_summary <- function(alpha=c(0, 0, 0, 0), beta){ 
-  #create table showing success probabilities for all combinations of t and x 
-  
-  arm0 <- c(prob_success(beta, 0, 0), prob_success(beta, 1, 0)) 
-  arm1 <- c(prob_success(beta, 0, 1), prob_success(beta, 1, 1))
-  
-  if(is.character(alpha)==TRUE){
-    p_arm0=p_arm1=c(0, 0)
-  }else{
-    
-    p_arm0 <- c(prob_missing(alpha,beta, 0, 0), prob_missing(alpha,beta, 1, 0)) 
-    p_arm1 <- c(prob_missing(alpha,beta, 0, 1), prob_missing(alpha,beta, 1, 1)) 
-    
-  }
-  
-
-    
-  result <- rbind(c(arm0, mean(arm0)), 
-                  c(arm1, mean(arm1)), 
-                  c(p_arm0, mean(p_arm0)), 
-                  c(p_arm1, mean(p_arm1)))
-  colnames(result) <- c("conditional on X=x0", "conditional on X=x1", "marginal")
-  rownames(result) <- c("p(success for arm0)",
-                        "p(success for arm1)",
-                        "p(missing value for arm0)",
-                        "p(missing value for arm1)")
-  
-  
-  
-  return(result)
-  
-}
-
+                   "single_impute",  "impute_zero")
