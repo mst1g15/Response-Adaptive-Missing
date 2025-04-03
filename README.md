@@ -23,7 +23,7 @@ The repository contains the following R scripts:
 
 - `03_forest_plots_smoking.R`  produces key figures of results 
 
-In addition, `GIindex_R.csv` contains Gittins Indices. 
+To run the simulation with the Gittins Index, the table `GIindex_R.csv` is required but is too large to upload. 
 
 ## How to run the simulation study
 
