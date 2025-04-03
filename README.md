@@ -1,13 +1,13 @@
 # Implementing Response-Adaptive Designs when Responses are Missing: Impute or Ignore?
-Welcome! This repository contains R scripts to run the simulation study in the article, "Implementing Response-Adaptive Designs when Responses are Missing: Impute or Ignore?" (Tackney and Villar)
+Welcome! This repository contains R scripts to run the simulation study in the article, "Implementing Response-Adaptive Designs when Responses are Missing: Impute or Ignore?"
 
 This simulation study is based on the iCanQuit trial and compares the performance of a number of response-adaptive designs combined with missing data strategies. Please see the manuscript for full details. 
 
-##Code for Simulation Study 
+## Code for Simulation Study 
 
 The repository contains the following R scripts: 
 
-### 00_init.R
+### `00_init.R`
 
 ### 01_main_simulation_function.R
 
