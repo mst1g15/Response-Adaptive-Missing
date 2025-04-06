@@ -25,7 +25,7 @@ To run the simulation with the Gittins Index, the table `GIindex_R.csv` is requi
 
 ## Output 
 
-Results from the simulation study are provided as .RData files in the Output folder. 
+Results from the simulation study are provided as .RData files in the output folder. 
 
 -  `03_forest_plots_smoking.R`  produces key figures of results 
 
