@@ -21,12 +21,16 @@ The repository contains the following R scripts:
 
 - `02_run_simulation_example.R` demonstrates how to run the simulation for one setting 
 
-- `03_forest_plots_smoking.R`  produces key figures of results 
-
 To run the simulation with the Gittins Index, the table `GIindex_R.csv` is required but is too large to upload. 
+
+## Output 
+
+Results from the simulation study are provided as .RData files in the Output folder. 
+
+-  `03_forest_plots_smoking.R`  produces key figures of results 
 
 ## How to run the simulation study
 
-You can go straight to `02_run_simulation_example.R` to select a simulation setting and run the simulation. 
+You can go straight to `02_run_simulation_example.R` to select a simulation setting and run the simulation. We recommend reducing `nsim` to a low number if running on a PC. 
 
 Please contact Mia.Tackney@mrc-bsu.cam.ac.uk for any queries/comments.
